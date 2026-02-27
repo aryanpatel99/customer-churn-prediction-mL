@@ -134,14 +134,7 @@ div[data-testid="stMetric"] { display: none !important; }
   box-shadow: 0 8px 30px rgba(0,0,0,0.3), 0 0 40px var(--glow);
 }
 .kpi-card:hover::before { opacity: 1; }
-.kpi-card .kpi-icon {
-  position: absolute; top: 18px; right: 20px;
-  width: 36px; height: 36px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.05rem;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-}
+
 .kpi-card .kpi-label {
   font-size: 0.76rem; font-weight: 500;
   color: var(--text-2); text-transform: uppercase;
@@ -195,7 +188,7 @@ div[data-testid="stMetric"] { display: none !important; }
 
 .rank-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 8px 0;
+  padding: 13px 0;
   border-bottom: 1px solid rgba(255,255,255,0.03);
 }
 .rank-row:last-child { border-bottom: none; }
@@ -340,7 +333,6 @@ def kpi_card(label, value, color, icon="", sub="", spark_data=None, delay=0):
         spark_html = f'<div class="sparkline-area">{sparkline_svg(spark_data, color)}</div>'
     return textwrap.dedent(f"""
     <div class="kpi-card" style="--accent-clr:{color};animation-delay:{delay}s">
-        <div class="kpi-icon">{icon}</div>
         <div>
             <div class="kpi-label">{label}</div>
             <div class="kpi-value" style="color:{color}">{value}</div>
@@ -574,17 +566,26 @@ with r2a:
 
 with r2b:
     with st.container(border=True):
-        st.markdown(chart_title_html("Probability Distribution", "Churn probability spread"), unsafe_allow_html=True)
-        fig2 = go.Figure(go.Histogram(
-            x=dff["Probability_Num"], nbinsx=25,
-            marker=dict(color=ACCENT_BLUE, line=dict(color="rgba(0,0,0,0.2)", width=0.5),
-                        cornerradius=3),
-            hovertemplate="Prob: %{x:.0f}%%<br>Count: %{y}<extra></extra>",
-        ))
-        fig2.update_layout(**LAYOUT_DARK, height=370)
-        fig2.update_xaxes(title_text="Churn Probability (%)", title_font=dict(color=TEXT_CLR, size=11))
-        fig2.update_yaxes(title_text="Customers", title_font=dict(color=TEXT_CLR, size=11))
-        st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+        st.markdown(chart_title_html("Churn Rate by Referrals", "More referrals = lower churn"), unsafe_allow_html=True)
+        ref_order = ["0", "1-3", "4+"]
+        cr_ref = (
+            dff.groupby("Referral Bucket", observed=False)["Churned"]
+            .apply(lambda s: round((s == "Yes").mean() * 100, 1))
+            .reindex(ref_order)
+        )
+        ref_items = [(k, v) for k, v in cr_ref.items()]
+        st.markdown(ranked_list_html(ref_items, ACCENT_RED), unsafe_allow_html=True)
+        
+        st.markdown('<div style="margin-top:20px;margin-bottom:12px;border-top:1px solid rgba(255,255,255,0.05);padding-top:16px;"></div>', unsafe_allow_html=True)
+        
+        st.markdown(chart_title_html("Churn Rate by Payment Method", "Risk by transaction type"), unsafe_allow_html=True)
+        cr_pay = (
+            dff.groupby("Payment Method")["Churned"]
+            .apply(lambda s: round((s == "Yes").mean() * 100, 1))
+            .sort_values(ascending=False)
+        )
+        pay_items = [(k, v) for k, v in cr_pay.items()]
+        st.markdown(ranked_list_html(pay_items, ACCENT_ORANGE), unsafe_allow_html=True)
 
 
 # ============================================
@@ -643,64 +644,6 @@ with r3b:
         st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar": False})
 
 
-# ============================================
-#  ROW 4 - Engagement & Revenue
-# ============================================
-st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-st.markdown(section_header("Engagement & Revenue", ACCENT_ORANGE), unsafe_allow_html=True)
-r4a, r4b = st.columns(2, gap="medium")
-
-with r4a:
-    with st.container(border=True):
-        st.markdown(chart_title_html("Churn Rate by Referrals", "More referrals = lower churn"), unsafe_allow_html=True)
-        ref_order = ["0", "1-3", "4+"]
-        cr_ref = (
-            dff.groupby("Referral Bucket", observed=False)["Churned"]
-            .apply(lambda s: round((s == "Yes").mean() * 100, 1))
-            .reindex(ref_order)
-        )
-        ref_items = [(k, v) for k, v in cr_ref.items()]
-        st.markdown(ranked_list_html(ref_items, ACCENT_RED), unsafe_allow_html=True)
-        st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
-
-        # Payment Method ranked list
-        st.markdown(
-            '<div style="margin-top:8px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.04)">'
-            '<div style="font-size:0.82rem;font-weight:600;color:#94A3B8;margin-bottom:8px">'
-            'Churn Rate by Payment Method</div>', unsafe_allow_html=True)
-        cr_pay = (
-            dff.groupby("Payment Method")["Churned"]
-            .apply(lambda s: round((s == "Yes").mean() * 100, 1))
-            .sort_values(ascending=False)
-        )
-        pay_items = [(k, v) for k, v in cr_pay.items()]
-        st.markdown(ranked_list_html(pay_items, ACCENT_ORANGE), unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-with r4b:
-    with st.container(border=True):
-        st.markdown(chart_title_html("Monthly Charge: Churned vs Retained", "Pricing pressure on churning customers"), unsafe_allow_html=True)
-        retained = dff[dff["Churned"] == "No"]["Monthly Charge"]
-        churned  = dff[dff["Churned"] == "Yes"]["Monthly Charge"]
-        fig6 = go.Figure()
-        fig6.add_trace(go.Box(
-            y=retained, name="Retained",
-            marker_color=GREEN_BRIGHT, boxmean=True,
-            line=dict(width=1.5, color=GREEN_BRIGHT),
-            fillcolor="rgba(52,211,153,0.15)",
-            hovertemplate="Retained<br>$%{y:.0f}<extra></extra>",
-        ))
-        fig6.add_trace(go.Box(
-            y=churned, name="Churned",
-            marker_color=ACCENT_RED, boxmean=True,
-            line=dict(width=1.5, color=ACCENT_RED),
-            fillcolor="rgba(224,86,102,0.15)",
-            hovertemplate="Churned<br>$%{y:.0f}<extra></extra>",
-        ))
-        fig6.update_layout(**LAYOUT_DARK, height=400)
-        fig6.update_yaxes(title_text="Monthly Charge ($)", title_font=dict(color=TEXT_CLR, size=11))
-        st.plotly_chart(fig6, use_container_width=True, config={"displayModeBar": False})
-
 
 # ============================================
 #  ROW 5 - High Risk Customers
@@ -727,8 +670,16 @@ with st.container(border=True):
             unsafe_allow_html=True,
         )
     else:
+        styled_df = high_risk.style.set_properties(**{
+            'background-color': '#0F1420',
+            'color': '#F1F5F9',
+            'border-color': 'rgba(255,255,255,0.06)'
+        }).set_table_styles([{
+            'selector': 'th',
+            'props': [('background-color', '#0F1420'), ('color', '#94A3B8'), ('border-color', 'rgba(255,255,255,0.06)')]
+        }])
         st.dataframe(
-            high_risk,
+            styled_df,
             use_container_width=True,
             height=380,
             column_config={
