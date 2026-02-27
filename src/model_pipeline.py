@@ -119,17 +119,31 @@ def predict_churn(new_data_df):
 
     processed_df = preprocess_data(new_data_df, is_training=False, expected_columns=expected_columns)
     X_scaled = scaler.transform(processed_df)
-    
+
     probabilities = model.predict_proba(X_scaled)[:, 1]
-    threshold = 0.3 
+    threshold = 0.3
     predictions = (probabilities >= threshold).astype(int)
-    
+
     final_df = new_data_df.copy()
     final_df["Churned"] = ["Yes" if pred == 1 else "No" for pred in predictions]
     final_df["Probability"] = [f"{prob*100:.2f}%" for prob in probabilities]
-    final_df.reset_index(drop=True, inplace=True)
-    return final_df
 
+    if hasattr(model, "coef_"):
+        coef = model.coef_[0]
+        importance_df = pd.DataFrame({
+            "Feature": expected_columns,
+            "Importance": coef
+        }).sort_values("Importance", ascending=False).reset_index(drop=True)
+    elif hasattr(model, "feature_importances_"):
+        importance_df = pd.DataFrame({
+            "Feature": expected_columns,
+            "Importance": model.feature_importances_
+        }).sort_values("Importance", ascending=False).reset_index(drop=True)
+    else:
+        importance_df = pd.DataFrame(columns=["Feature", "Importance"])
+
+    final_df.reset_index(drop=True, inplace=True)
+    return final_df, importance_df
 
 if __name__ == "__main__":
 
@@ -140,10 +154,12 @@ if __name__ == "__main__":
         print("\n--- Testing predict_churn with sample data ---")
 
         df_raw = pd.read_csv(DATA_PATH)
-        sample_df = df_raw.sample(5) 
+        sample_df = df_raw
         
-        result_df = predict_churn(sample_df)
+        result_df, importance_df = predict_churn(sample_df)
         print(result_df[["Customer ID", "Churned", "Probability"]])
+        print("\nImportant Features:")
+        print(importance_df)
         
         # for i, row in result_df.reset_index().iterrows():
         #     print(f"Sample {i+1}: Prediction = {row['Churned']}, Churn Probability = {row['Probability']:.4f}")
