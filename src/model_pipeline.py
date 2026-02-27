@@ -121,28 +121,32 @@ def predict_churn(new_data_df):
     X_scaled = scaler.transform(processed_df)
     
     probabilities = model.predict_proba(X_scaled)[:, 1]
-    threshold = 0.3 if isinstance(model, LogisticRegression) else 0.5
+    threshold = 0.3 
     predictions = (probabilities >= threshold).astype(int)
     
-    return predictions, probabilities
+    final_df = new_data_df.copy()
+    final_df["Churned"] = ["Yes" if pred == 1 else "No" for pred in predictions]
+    final_df["Probability"] = [f"{prob*100:.2f}%" for prob in probabilities]
+    final_df.reset_index(drop=True, inplace=True)
+    return final_df
 
 
 if __name__ == "__main__":
 
-    DATA_PATH = "/Users/srijanpatel/Documents/AI_ML_CAPSTONE/customer-churn-prediction-mL/data/raw/telecom_customer_churn.csv"
+    DATA_PATH= os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/raw/telecom_customer_churn.csv")
     if os.path.exists(DATA_PATH):
         # train_and_evaluate(DATA_PATH)
         
         print("\n--- Testing predict_churn with sample data ---")
 
         df_raw = pd.read_csv(DATA_PATH)
-        sample_df = df_raw.head(5) 
+        sample_df = df_raw.sample(5) 
         
-        predictions, probabilities = predict_churn(sample_df)
+        result_df = predict_churn(sample_df)
+        print(result_df[["Customer ID", "Churned", "Probability"]])
         
-        for i in range(len(predictions)):
-            status = "Churn" if predictions[i] == 1 else "Stay"
-            print(f"Sample {i+1}: Prediction = {status}, Churn Probability = {probabilities[i]:.4f}")
+        # for i, row in result_df.reset_index().iterrows():
+        #     print(f"Sample {i+1}: Prediction = {row['Churned']}, Churn Probability = {row['Probability']:.4f}")
             
     else:
         print(f"Data file not found at {DATA_PATH}. Please check the path.")
