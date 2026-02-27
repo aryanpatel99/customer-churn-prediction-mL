@@ -171,33 +171,34 @@ The system includes a working Streamlit-based local interface that allows:
 ---
 
 ## Repository Structure
+```
 customer-churn/
 │
 ├── app/
-│ └── app.py
+│   └── app.py
 │
 ├── artifacts/
-│ ├── best_churn_model.pkl
-│ ├── feature_columns.pkl
-│ └── scaler.pkl
+│   ├── best_churn_model.pkl
+│   ├── feature_columns.pkl
+│   └── scaler.pkl
 │
 ├── data/
-│ ├── raw/
-│ │ └── telecom_customer_churn.csv
-│ └── processed/
-│ └── .gitkeep
+│   ├── raw/
+│   │   └── telecom_customer_churn.csv
+│   └── processed/
+│       └── .gitkeep
 │
 ├── reports/
-│ └── preprocessing_report.md
+│   └── preprocessing_report.md
 │
 ├── src/
-│ ├── eda.ipynb
-│ └── model_pipeline.py
+│   ├── eda.ipynb
+│   └── model_pipeline.py
 │
 ├── .gitignore
 ├── README.md
 └── requirements.txt
-
+```
 ---
 
 ## Constraints & Requirements
